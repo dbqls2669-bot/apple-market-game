@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🍎 사과시장 게임</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --green: #3B6D11;
+  --green-light: #EAF3DE;
+  --green-mid: #639922;
+  --blue: #185FA5;
+  --blue-light: #E6F1FB;
+  --red: #993C1D;
+  --red-light: #FAECE7;
+  --amber: #BA7517;
+  --amber-light: #FAEEDA;
+  --gray: #f5f5f3;
+  --gray2: #e8e8e4;
+  --gray3: #888780;
+  --text: #1a1a18;
+  --text2: #5a5a56;
+  --text3: #999992;
+  --border: rgba(0,0,0,0.10);
+  --white: #fff;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: var(--gray);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 0 80px;
+  min-height: 100vh;
+  background: var(--white);
+  box-shadow: 0 0 40px rgba(0,0,0,0.08);
+}
+
+/* Header */
+.header {
+  background: var(--green);
+  color: #fff;
+  padding: 20px 20px 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.header-top { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.header h1 { font-size: 18px; font-weight: 700; color: #fff; }
+.header-sub { font-size: 12px; color: rgba(255,255,255,0.7); }
+.market-badge {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+.market-badge.open { background: #fff; color: var(--green); }
+
+/* Screen */
+.screen { display: none; padding: 20px; }
+.screen.on { display: block; }
+
+/* Card */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.card-title { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* Buttons */
+.btn {
+  display: block; width: 100%;
+  padding: 13px 16px;
+  font-size: 15px; font-weight: 500; font-family: inherit;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--gray);
+  color: var(--text);
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: all 0.15s;
+  text-align: center;
+}
+.btn:hover { background: var(--gray2); }
+.btn:active { transform: scale(0.98); }
+.btn-green { background: var(--green); color: #fff; border-color: var(--green); }
+.btn-green:hover { background: #27500A; }
+.btn-blue { background: var(--blue); color: #fff; border-color: var(--blue); }
+.btn-blue:hover { background: #0C447C; }
+.btn-red { background: var(--red); color: #fff; border-color: var(--red); }
+.btn-red:hover { background: #712B13; }
+.btn-sm { width: auto; display: inline-block; padding: 8px 14px; font-size: 13px; margin-bottom: 0; margin-right: 6px; }
+.btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+
+/* Tags */
+.tag {
+  display: inline-block; padding: 3px 10px;
+  border-radius: 999px; font-size: 12px; font-weight: 700;
+}
+.tag-seller { background: var(--blue-light); color: var(--blue); }
+.tag-buyer { background: var(--red-light); color: var(--red); }
+.tag-s1 { background: var(--green-light); color: var(--green); }
+.tag-s2 { background: var(--amber-light); color: var(--amber); }
+
+/* Big number */
+.big-num { font-size: 36px; font-weight: 700; line-height: 1.1; }
+.label-sm { font-size: 12px; color: var(--text3); margin-bottom: 4px; }
+
+/* Metric grid */
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.metric-grid.g3 { grid-template-columns: 1fr 1fr 1fr; }
+.metric {
+  background: var(--gray);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  text-align: center;
+}
+
+/* Notice */
+.notice {
+  padding: 11px 14px; border-radius: var(--radius-sm);
+  font-size: 13px; margin-bottom: 12px;
+  font-weight: 500;
+}
+.notice-ok { background: var(--green-light); color: var(--green); }
+.notice-warn { background: var(--amber-light); color: var(--amber); }
+.notice-err { background: var(--red-light); color: var(--red); }
+
+/* Trade row */
+.trade-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px;
+  background: var(--gray);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.profit { font-weight: 700; color: var(--green); }
+
+/* Offer item */
+.offer-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 8px;
+  cursor: pointer;
+  background: var(--white);
+  transition: all 0.15s;
+}
+.offer-item:hover { border-color: var(--blue); background: var(--blue-light); }
+.offer-price { font-size: 18px; font-weight: 700; color: var(--blue); min-width: 60px; }
+
+/* Input */
+.input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.input-row label { font-size: 13px; color: var(--text2); min-width: 70px; }
+input[type=number] {
+  padding: 9px 12px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); font-size: 15px; font-family: inherit;
+  width: 100px; background: var(--gray);
+}
+input[type=number]:focus { outline: none; border-color: var(--blue); background: #fff; }
+
+/* Divider */
+hr { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+/* Role card */
+.role-card {
+  text-align: center; padding: 28px 20px;
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+}
+.role-card.seller { background: var(--blue-light); border: 1.5px solid var(--blue); }
+.role-card.buyer { background: var(--red-light); border: 1.5px solid var(--red); }
+.role-icon { font-size: 48px; margin-bottom: 8px; }
+.role-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.role-value { font-size: 32px; font-weight: 700; margin: 8px 0 4px; }
+.role-value-label { font-size: 13px; color: var(--text2); }
+.role-rule { font-size: 13px; color: var(--text2); margin-top: 12px; line-height: 1.6; }
+
+/* Section label */
+.section-sep {
+  font-size: 11px; font-weight: 700; color: var(--text3);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  margin: 20px 0 10px;
+}
+
+/* Tab nav (bottom) */
+.tab-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  background: var(--white); border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 200;
+}
+.tab-btn {
+  flex: 1; padding: 10px 4px 12px;
+  border: none; background: none; cursor: pointer;
+  font-size: 10px; color: var(--text3); font-family: inherit;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  transition: color 0.15s;
+}
+.tab-btn .ti { font-size: 20px; }
+.tab-btn.active { color: var(--green); }
+
+/* Chart wrapper */
+.chart-wrap { position: relative; width: 100%; height: 280px; }
+
+/* Empty state */
+.empty { text-align: center; color: var(--text3); padding: 24px 16px; font-size: 13px; }
+
+/* Scroll list */
+.scroll-list { max-height: 240px; overflow-y: auto; }
+
+/* Apple decoration */
+.apple-bg {
+  font-size: 80px; opacity: 0.07; position: absolute;
+  right: -10px; top: 50%; transform: translateY(-50%);
+  pointer-events: none; line-height: 1;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <span style="font-size:22px">🍎</span>
+      <h1>사과시장 게임</h1>
+      <span class="market-badge" id="market-badge">🔴 닫힘</span>
+    </div>
+    <div class="header-sub" id="header-sub">세션 1 · 라운드 1</div>
+  </div>
+
+  <!-- ① 홈 (모드 선택) -->
+  <div id="s-home" class="screen on">
+    <div style="text-align:center; padding: 32px 0 24px; position:relative; overflow:hidden;">
+      <div class="apple-bg">🍎</div>
+      <div style="font-size:56px; margin-bottom:12px;">🍎</div>
+      <div style="font-size:22px; font-weight:700; margin-bottom:6px;">사과시장 게임</div>
+      <div style="font-size:14px; color:var(--text2);">수요·공급으로 배우는 가격결정 원리</div>
+    </div>
+    <div class="section-sep">역할을 선택하세요</div>
+    <button class="btn btn-green" onclick="goTeacher()">
+      📊 교사 화면 (시장 관리)
+    </button>
+    <button class="btn btn-blue" onclick="goStudent()">
+      🎮 학생 화면 (게임 참여)
+    </button>
+    <div class="card" style="margin-top:20px; background:var(--gray); border:none;">
+      <div class="card-title">게임 방법</div>
+      <div style="font-size:13px; color:var(--text2); line-height:1.8;">
+        1. 교사가 <b>시장 열기</b>를 누릅니다<br>
+        2. 학생은 역할(판매자/구매자)을 배정받습니다<br>
+        3. 판매자는 가격을 제안, 구매자는 클릭해서 구매<br>
+        4. 교사가 시장을 닫고 <b>곡선 탭</b>에서 결과 분석
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 교사 화면 -->
+  <div id="s-teacher" class="screen">
+    <div class="section-sep">시장 제어</div>
+    <div class="card" style="position:relative; overflow:hidden;">
+      <div class="apple-bg" style="font-size:60px; opacity:0.06">🍎</div>
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+        <span class="tag tag-s1" id="t-sess-tag">세션 1</span>
+        <span style="font-weight:600;" id="t-round-label">라운드 1</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-green btn-sm" onclick="openMarket()">🟢 시장 열기</button>
+        <button class="btn btn-red btn-sm" onclick="closeMarket()">🔴 시장 닫기</button>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-sm" onclick="nextRound()">다음 라운드 →</button>
+        <button class="btn btn-sm" onclick="nextSession()">다음 세션 →</button>
+        <button class="btn btn-sm" onclick="resetGame()" style="color:var(--red)">초기화</button>
+      </div>
+    </div>
+
+    <div class="metric-grid g3">
+      <div class="metric">
+        <div class="label-sm">총 거래</div>
+        <div class="big-num" id="t-total">0</div>
+      </div>
+      <div class="metric">
+        <div class="label-sm">이번 라운드</div>
+        <div class="big-num" id="t-round-cnt">0</div>
+      </div>
+      <div class="metric">
+        <div class="label-sm">평균 거래가</div>
+        <div class="big-num" style="font-size:22px;" id="t-avg">—</div>
+      </div>
+    </div>
+
+    <div class="section-sep">실시간 거래 내역</div>
+    <div id="t-trade-list" class="scroll-list">
+      <div class="empty">아직 거래가 없습니다.</div>
+    </div>
+  </div>
+
+  <!-- ③ 학생: 역할 화면 -->
+  <div id="s-role" class="screen">
+    <div class="section-sep">내 역할</div>
+    <div id="role-card-wrap"></div>
+    <div id="role-notice" class="notice notice-warn" style="display:none"></div>
+    <button class="btn btn-blue" onclick="goMarket()">시장으로 이동 →</button>
+    <button class="btn" onclick="reassign()">역할 다시 받기</button>
+  </div>
+
+  <!-- ④ 학생: 시장 화면 -->
+  <div id="s-market" class="screen">
+    <div id="m-status" class="notice notice-warn">⏳ 시장이 열리기를 기다리는 중...</div>
+
+    <div class="card" style="display:flex; align-items:center; gap:10px;">
+      <span id="m-role-tag"></span>
+      <div>
+        <div style="font-weight:600;" id="m-role-name"></div>
+        <div style="font-size:12px; color:var(--text3);" id="m-key-hint"></div>
+      </div>
+      <div style="margin-left:auto; text-align:right;">
+        <div class="label-sm">내 기준가</div>
+        <div style="font-size:20px; font-weight:700;" id="m-my-price"></div>
+      </div>
+    </div>
+
+    <!-- 판매자 패널 -->
+    <div id="seller-panel" style="display:none">
+      <div class="section-sep">판매 가격 제안</div>
+      <div class="card">
+        <div class="input-row">
+          <label>제안 가격</label>
+          <input type="number" id="sell-price" min="0.5" max="5" step="0.1" placeholder="0.0">
+          <span style="font-size:13px; color:var(--text2);">만원</span>
+        </div>
+        <button class="btn btn-green" onclick="postOffer()">📢 제안 올리기</button>
+        <div id="sell-notice" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- 구매자 패널 -->
+    <div id="buyer-panel" style="display:none">
+      <div class="section-sep">판매 제안 목록</div>
+      <div id="offer-list" class="scroll-list">
+        <div class="empty">판매 제안을 기다리는 중...</div>
+      </div>
+      <div id="buy-notice" style="display:none; margin-top:8px;"></div>
+    </div>
+
+    <div class="section-sep">내 거래 기록</div>
+    <div id="m-my-trades"><div class="empty">아직 거래 없음</div></div>
+  </div>
+
+  <!-- ⑤ 곡선 탭 -->
+  <div id="s-chart" class="screen">
+    <div class="btn-row">
+      <button class="btn btn-sm" id="cs1-btn" onclick="renderChart(1)" style="background:var(--green);color:#fff;border-color:var(--green)">세션 1</button>
+      <button class="btn btn-sm" id="cs2-btn" onclick="renderChart(2)">세션 2</button>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric">
+        <div class="label-sm" id="chart-sess-label">세션 1 거래 수</div>
+        <div class="big-num" id="chart-cnt">0</div>
+      </div>
+      <div class="metric">
+        <div class="label-sm">평균 거래가</div>
+        <div class="big-num" id="chart-avg">—</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:14px;">
+      <div class="chart-wrap">
+        <canvas id="sdChart" role="img" aria-label="수요공급 곡선 차트"></canvas>
+      </div>
+      <div style="display:flex;gap:16px;font-size:12px;color:var(--text2);margin-top:10px;flex-wrap:wrap;">
+        <span><span style="display:inline-block;width:14px;height:3px;background:#185FA5;vertical-align:middle;margin-right:4px;"></span>공급곡선</span>
+        <span><span style="display:inline-block;width:14px;height:3px;background:#993C1D;vertical-align:middle;margin-right:4px;"></span>수요곡선</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#3B6D11;border-radius:50%;vertical-align:middle;margin-right:4px;"></span>실제 거래가</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">라운드별 평균 거래가</div>
+      <div id="round-summary"></div>
+    </div>
+
+    <div class="card" id="session-compare" style="display:none">
+      <div class="card-title">세션 비교</div>
+      <div id="session-compare-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- 하단 탭 -->
+<nav class="tab-nav" id="tab-nav" style="display:none">
+  <button class="tab-btn active" id="tab-home" onclick="showTab('home')">
+    <span class="ti ti-home"></span>홈
+  </button>
+  <button class="tab-btn" id="tab-teacher" onclick="showTab('teacher')">
+    <span class="ti ti-settings"></span>교사
+  </button>
+  <button class="tab-btn" id="tab-role" onclick="showTab('role')">
+    <span class="ti ti-user"></span>내 역할
+  </button>
+  <button class="tab-btn" id="tab-market" onclick="showTab('market')">
+    <span class="ti ti-shopping-cart"></span>시장
+  </button>
+  <button class="tab-btn" id="tab-chart" onclick="showTab('chart'); renderChart(chartSess)">
+    <span class="ti ti-chart-line"></span>곡선
+  </button>
+</nav>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+
+<script>
+let state = {
+  session: 1, round: 1, marketOpen: false,
+  trades: [], offers: [],
+  myRole: null, myCost: 0, myValue: 0,
+  myRoundTraded: false
+};
+let chartSess = 1;
+let sdChart = null;
+let pollTimer = null;
+
+function save() {
+  try { localStorage.setItem('appleGame2025', JSON.stringify(state)); } catch(e) {}
+}
+function load() {
+  try {
+    const d = localStorage.getItem('appleGame2025');
+    if (d) state = JSON.parse(d);
+  } catch(e) {}
+}
+
+load();
+
+function showTab(tab) {
+  ['home','teacher','role','market','chart'].forEach(t => {
+    document.getElementById('s-'+t).classList.remove('on');
+    document.getElementById('tab-'+t).classList.remove('active');
+  });
+  document.getElementById('s-'+tab).classList.add('on');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (tab !== 'home') startPoll();
+  else stopPoll();
+}
+
+function goTeacher() {
+  document.getElementById('tab-nav').style.display = 'flex';
+  showTab('teacher');
+  refreshTeacher();
+}
+
+function goStudent() {
+  document.getElementById('tab-nav').style.display = 'flex';
+  assignRole();
+  showTab('role');
+  renderRole();
+}
+
+function goMarket() {
+  showTab('market');
+  renderMarket();
+}
+
+function reassign() {
+  assignRole();
+  renderRole();
+}
+
+function assignRole() {
+  const pools = {
+    1: ['seller-low','seller-low','seller-high','buyer-high','buyer-low','buyer-low'],
+    2: ['seller-high','seller-high','seller-low','buyer-low','buyer-high','buyer-high']
+  };
+  const pool = pools[state.session];
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  state.myRole = pick.startsWith('seller') ? 'seller' : 'buyer';
+  state.myCost = pick === 'seller-low' ? 1 : pick === 'seller-high' ? 3 : 0;
+  state.myValue = pick === 'buyer-high' ? 4 : pick === 'buyer-low' ? 2 : 0;
+  state.myRoundTraded = false;
+  save();
+}
+
+function renderRole() {
+  const isSeller = state.myRole === 'seller';
+  const wrap = document.getElementById('role-card-wrap');
+  if (isSeller) {
+    wrap.innerHTML = `
+      <div class="role-card seller">
+        <div class="role-icon">🏪</div>
+        <div class="role-name" style="color:var(--blue)">판매자 (공급자)</div>
+        <div class="role-value" style="color:var(--blue)">${state.myCost}만원</div>
+        <div class="role-value-label">내 생산비용</div>
+        <div class="role-rule">생산비용(<b>${state.myCost}만원</b>) 이상의 가격으로 팔아야 수익이 납니다.<br>손해 보는 거래는 절대 하지 마세요!</div>
+      </div>`;
+  } else {
+    wrap.innerHTML = `
+      <div class="role-card buyer">
+        <div class="role-icon">🛒</div>
+        <div class="role-name" style="color:var(--red)">구매자 (수요자)</div>
+        <div class="role-value" style="color:var(--red)">${state.myValue}만원</div>
+        <div class="role-value-label">내 지불의향가격</div>
+        <div class="role-rule">지불의향가격(<b>${state.myValue}만원</b>) 이하로 사야 수익이 납니다.<br>손해 보는 거래는 절대 하지 마세요!</div>
+      </div>`;
+  }
+}
+
+function renderMarket() {
+  const isSeller = state.myRole === 'seller';
+  document.getElementById('m-role-tag').innerHTML = isSeller
+    ? '<span class="tag tag-seller">판매자</span>'
+    : '<span class="tag tag-buyer">구매자</span>';
+  document.getElementById('m-role-name').textContent = isSeller ? '판매자 (공급자)' : '구매자 (수요자)';
+  document.getElementById('m-key-hint').textContent = isSeller
+    ? `최소 ${state.myCost}만원 이상에 팔기` : `최대 ${state.myValue}만원 이하에 사기`;
+  document.getElementById('m-my-price').textContent = isSeller
+    ? state.myCost + '만원' : state.myValue + '만원';
+  document.getElementById('seller-panel').style.display = isSeller ? 'block' : 'none';
+  document.getElementById('buyer-panel').style.display = isSeller ? 'none' : 'block';
+  updateMarketStatus();
+  renderOffers();
+  renderMyTrades();
+}
+
+function updateMarketStatus() {
+  const el = document.getElementById('m-status');
+  const badge = document.getElementById('market-badge');
+  if (state.marketOpen) {
+    el.className = 'notice notice-ok';
+    el.textContent = '🟢 시장이 열렸습니다! 지금 거래하세요.';
+    badge.className = 'market-badge open';
+    badge.textContent = '🟢 열림';
+  } else {
+    el.className = 'notice notice-warn';
+    el.textContent = '⏳ 시장이 닫혀 있습니다. 교사가 열 때까지 기다리세요.';
+    badge.className = 'market-badge';
+    badge.textContent = '🔴 닫힘';
+  }
+  const sub = `세션 ${state.session} · 라운드 ${state.round}`;
+  document.getElementById('header-sub').textContent = sub;
+}
+
+function postOffer() {
+  if (!state.marketOpen) { showNotice('sell-notice', '시장이 닫혀 있습니다.', 'err'); return; }
+  if (state.myRoundTraded) { showNotice('sell-notice', '이번 라운드에 이미 거래했습니다.', 'warn'); return; }
+  const p = parseFloat(document.getElementById('sell-price').value);
+  if (!p || p <= 0) { showNotice('sell-notice', '가격을 입력해주세요.', 'err'); return; }
+  if (p < state.myCost) {
+    showNotice('sell-notice', `⚠️ 생산비용(${state.myCost}만원)보다 낮아요! 손해입니다.`, 'err'); return;
+  }
+  state.offers = state.offers.filter(o => o.sellerId !== 'me_' + Date.now());
+  const oid = Date.now();
+  state.offers.push({ id: oid, price: p, cost: state.myCost, session: state.session, round: state.round });
+  save();
+  showNotice('sell-notice', `✅ ${p}만원으로 제안을 올렸어요!`, 'ok');
+  document.getElementById('sell-price').value = '';
+}
+
+function renderOffers() {
+  const el = document.getElementById('offer-list');
+  if (!el) return;
+  const active = state.offers.filter(o => o.session === state.session && o.round === state.round);
+  if (!active.length) {
+    el.innerHTML = '<div class="empty">판매 제안을 기다리는 중...</div>'; return;
+  }
+  el.innerHTML = active.map(o => `
+    <div class="offer-item" onclick="buyOffer(${o.id})">
+      <span style="font-size:24px;">🍎</span>
+      <div style="flex:1">
+        <div class="offer-price">${o.price}만원</div>
+        <div style="font-size:12px;color:var(--text2);">사과 한 묶음 · 클릭해서 구매</div>
+      </div>
+      <span style="font-size:20px;">→</span>
+    </div>`).join('');
+}
+
+function buyOffer(id) {
+  if (!state.marketOpen) { showNotice('buy-notice', '시장이 닫혀 있습니다.', 'err'); return; }
+  if (state.myRoundTraded) { showNotice('buy-notice', '이번 라운드에 이미 거래했습니다.', 'warn'); return; }
+  const offer = state.offers.find(o => o.id === id);
+  if (!offer) { showNotice('buy-notice', '이미 거래된 제안입니다.', 'err'); return; }
+  if (offer.price > state.myValue) {
+    showNotice('buy-notice', `⚠️ 지불의향가격(${state.myValue}만원)보다 비쌉니다! 손해예요.`, 'err'); return;
+  }
+  const buyerProfit = +(state.myValue - offer.price).toFixed(1);
+  const sellerProfit = +(offer.price - offer.cost).toFixed(1);
+  state.trades.push({
+    id: Date.now(), session: state.session, round: state.round,
+    price: offer.price, cost: offer.cost, value: state.myValue,
+    sellerProfit, buyerProfit
+  });
+  state.offers = state.offers.filter(o => o.id !== id);
+  state.myRoundTraded = true;
+  save();
+  showNotice('buy-notice', `✅ ${offer.price}만원에 구매! 내 수익: +${buyerProfit}만원`, 'ok');
+  renderOffers();
+  renderMyTrades();
+  refreshTeacher();
+}
+
+function renderMyTrades() {
+  const el = document.getElementById('m-my-trades');
+  if (!el) return;
+  const mine = state.trades.filter(t => t.session === state.session);
+  if (!mine.length) { el.innerHTML = '<div class="empty">아직 거래 없음</div>'; return; }
+  el.innerHTML = [...mine].reverse().map(t => `
+    <div class="trade-row">
+      <span class="tag tag-s${t.session}" style="font-size:11px">S${t.session}R${t.round}</span>
+      <span style="font-weight:600">${t.price}만원</span>
+      <span style="color:var(--text2);flex:1;font-size:12px">비용${t.cost} / 의향${t.value}</span>
+      <span class="profit">구매+${t.buyerProfit}</span>
+    </div>`).join('');
+}
+
+function openMarket() {
+  state.marketOpen = true; save();
+  updateMarketStatus(); refreshTeacher();
+}
+function closeMarket() {
+  state.marketOpen = false; save();
+  updateMarketStatus(); refreshTeacher();
+}
+function nextRound() {
+  if (state.round < 2) state.round++;
+  state.marketOpen = false; state.myRoundTraded = false; save();
+  document.getElementById('t-round-label').textContent = `라운드 ${state.round}`;
+  updateMarketStatus(); refreshTeacher();
+}
+function nextSession() {
+  if (state.session < 2) state.session++;
+  state.round = 1; state.marketOpen = false; state.myRoundTraded = false; save();
+  const tag = document.getElementById('t-sess-tag');
+  tag.className = `tag tag-s${state.session}`;
+  tag.textContent = `세션 ${state.session}`;
+  document.getElementById('t-round-label').textContent = `라운드 1`;
+  updateMarketStatus(); refreshTeacher();
+}
+function resetGame() {
+  if (!confirm('모든 데이터를 초기화할까요?')) return;
+  state = { session:1, round:1, marketOpen:false, trades:[], offers:[], myRole:null, myCost:0, myValue:0, myRoundTraded:false };
+  save(); refreshTeacher(); updateMarketStatus();
+}
+
+function refreshTeacher() {
+  const cur = state.trades.filter(t => t.session === state.session && t.round === state.round);
+  const all = state.trades;
+  document.getElementById('t-total').textContent = all.length;
+  document.getElementById('t-round-cnt').textContent = cur.length;
+  const avg = cur.length ? (cur.reduce((a,b)=>a+b.price,0)/cur.length).toFixed(1)+'만' : '—';
+  document.getElementById('t-avg').textContent = avg;
+  const list = document.getElementById('t-trade-list');
+  if (!all.length) { list.innerHTML = '<div class="empty">아직 거래가 없습니다.</div>'; return; }
+  list.innerHTML = [...all].reverse().slice(0,15).map(t => `
+    <div class="trade-row">
+      <span class="tag tag-s${t.session}" style="font-size:11px">S${t.session}R${t.round}</span>
+      <span style="font-weight:600">${t.price}만원</span>
+      <span style="color:var(--text2);flex:1;font-size:12px">비용${t.cost} 의향${t.value}</span>
+      <span class="profit" style="font-size:12px">판+${t.sellerProfit}</span>
+      <span class="profit" style="font-size:12px">구+${t.buyerProfit}</span>
+    </div>`).join('');
+}
+
+function renderChart(sess) {
+  chartSess = sess;
+  document.getElementById('cs1-btn').style.background = sess===1?'var(--green)':'';
+  document.getElementById('cs1-btn').style.color = sess===1?'#fff':'';
+  document.getElementById('cs2-btn').style.background = sess===2?'var(--green)':'';
+  document.getElementById('cs2-btn').style.color = sess===2?'#fff':'';
+
+  const ts = state.trades.filter(t => t.session === sess);
+  const lowS = ts.filter(t=>t.cost===1).length;
+  const highS = ts.filter(t=>t.cost===3).length;
+  const highD = ts.filter(t=>t.value===4).length;
+  const lowD = ts.filter(t=>t.value===2).length;
+  const maxQ = Math.max(lowS+highS, highD+lowD, 1) + 2;
+
+  const supply = [{x:0,y:1},{x:lowS,y:1},{x:lowS,y:3},{x:lowS+highS,y:3},{x:lowS+highS,y:5}];
+  const demand = [{x:0,y:4},{x:highD,y:4},{x:highD,y:2},{x:highD+lowD,y:2},{x:highD+lowD,y:0}];
+  const actual = ts.map((t,i)=>({x:i+1,y:t.price}));
+  const avg = ts.length ? (ts.reduce((a,b)=>a+b.price,0)/ts.length).toFixed(1) : null;
+
+  document.getElementById('chart-sess-label').textContent = `세션 ${sess} 거래 수`;
+  document.getElementById('chart-cnt').textContent = ts.length;
+  document.getElementById('chart-avg').textContent = avg ? avg+'만' : '—';
+
+  if (sdChart) { sdChart.destroy(); sdChart = null; }
+  sdChart = new Chart(document.getElementById('sdChart'), {
+    type: 'line',
+    data: { datasets: [
+      { label:'공급곡선', data:supply, borderColor:'#185FA5', fill:false, tension:0, pointRadius:3, borderWidth:2.5 },
+      { label:'수요곡선', data:demand, borderColor:'#993C1D', fill:false, tension:0, pointRadius:3, borderWidth:2.5 },
+      { label:'실제 거래', data:actual, borderColor:'#3B6D11', backgroundColor:'#3B6D11', showLine:false, pointRadius:7 }
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{type:'linear', title:{display:true,text:'수량 (묶음)',font:{size:12}}, min:0, max:maxQ, ticks:{stepSize:1}},
+        y:{title:{display:true,text:'가격 (만원)',font:{size:12}}, min:0, max:5, ticks:{callback:v=>v+'만'}}
+      }
+    }
+  });
+
+  // 라운드별 요약
+  const rSummary = document.getElementById('round-summary');
+  const rounds = [1,2];
+  rSummary.innerHTML = rounds.map(r => {
+    const rt = ts.filter(t=>t.round===r);
+    const ravg = rt.length ? (rt.reduce((a,b)=>a+b.price,0)/rt.length).toFixed(1) : '—';
+    return `<div class="trade-row">
+      <span class="tag tag-s${sess}" style="font-size:11px">라운드 ${r}</span>
+      <span style="font-weight:600">${rt.length}건</span>
+      <span style="color:var(--text2);flex:1">평균 거래가</span>
+      <span style="font-weight:700">${ravg}${ravg!=='—'?'만원':''}</span>
+    </div>`;
+  }).join('');
+
+  // 세션 비교
+  const s1t = state.trades.filter(t=>t.session===1);
+  const s2t = state.trades.filter(t=>t.session===2);
+  if (s1t.length && s2t.length) {
+    const avg1 = (s1t.reduce((a,b)=>a+b.price,0)/s1t.length).toFixed(1);
+    const avg2 = (s2t.reduce((a,b)=>a+b.price,0)/s2t.length).toFixed(1);
+    const diff = (parseFloat(avg2)-parseFloat(avg1)).toFixed(1);
+    const dir = diff > 0 ? '📈 상승' : diff < 0 ? '📉 하락' : '→ 동일';
+    document.getElementById('session-compare').style.display = 'block';
+    document.getElementById('session-compare-body').innerHTML = `
+      <div class="trade-row">
+        <span class="tag tag-s1">세션 1</span>
+        <span style="font-weight:700;flex:1">평균 ${avg1}만원</span>
+      </div>
+      <div class="trade-row">
+        <span class="tag tag-s2">세션 2</span>
+        <span style="font-weight:700;flex:1">평균 ${avg2}만원</span>
+      </div>
+      <div class="notice ${parseFloat(diff)>0?'notice-ok':'notice-warn'}" style="margin-top:8px;margin-bottom:0">
+        세션1 → 세션2: <b>${dir} (${Math.abs(diff)}만원)</b><br>
+        <span style="font-size:12px">세션2는 고비용 공급자·고의향 수요자 증가 → 균형가격 상승</span>
+      </div>`;
+  } else {
+    document.getElementById('session-compare').style.display = 'none';
+  }
+}
+
+function showNotice(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = `notice notice-${type}`;
+  el.style.display = 'block';
+  el.textContent = msg;
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+function startPoll() {
+  if (pollTimer) return;
+  pollTimer = setInterval(() => {
+    load();
+    updateMarketStatus();
+    if (document.getElementById('s-market').classList.contains('on')) {
+      renderOffers(); renderMyTrades();
+    }
+    if (document.getElementById('s-teacher').classList.contains('on')) refreshTeacher();
+    if (document.getElementById('s-chart').classList.contains('on')) renderChart(chartSess);
+  }, 2000);
+}
+function stopPoll() {
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+refreshTeacher();
+updateMarketStatus();
+</script>
+</body>
+</html>
